@@ -196,6 +196,12 @@ class AVLTree {
             }
             return T2();
         }
+        bool empty() const {
+            return root == nullptr;
+        }
+        int size() const {
+            return N;
+        }
 };
 
 #endif
