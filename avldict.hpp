@@ -1,17 +1,14 @@
 /*
     AVLDict.hpp 
     Copyright (c) 2022 Max Goren
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
-
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
-
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,144 +16,185 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-
 */
 
 #ifndef AVLDICT_HPP
 #define AVLDICT_HPP
 #include <iostream>
-#include <memory>
 using namespace std;
 
-template <class K, class V>
-class Dict {
+template <class T, class T2>
+class AVLTree {
     private:
-        struct node;
-        typedef shared_ptr<node> link;
         struct node {
-            K key;
-            V value;
+            T key;
+            T2 value;
             int height;
-            link left;
-            link right;
-            node(K k, V v) {
-                key = k; value = v;
-                height = 0;
-                left = right = nullptr;
+            node* left;
+            node* right;
+            node* parent;
+            node(T k, T2 v) {
+                key = k; value = v; height = 0; left = right = parent = nullptr;
             }
         };
-        link head;
-        int count;
-        int height(link h) { return (h == nullptr) ? -1:h->height; }
-        int bf(link h) { return height(h->left) - height(h->right); }
-        int heightAdjust(link h) {
-            return 1 + max(height(h->left), height(h->right));
+        node* root;
+        int N;
+        int height(node* h) {
+            return (h == nullptr) ? -1:h->height;
         }
-        link rotL(link h) {
-            link x = h->right; h->right = x->left; x->left = h;
-            h->height = heightAdjust(h);
-            x->height = heightAdjust(x);
-            return x;
-        }
-        link rotR(link h) {
-            link x = h->left; h->left = x->right; x->right = h;
-            h->height = heightAdjust(h);
-            x->height = heightAdjust(x);
-            return x;
-        }
-        link balance(link h) {
-            if (bf(h) < -1) {
-                if (bf(h->right) > 0) {
-                    h->right = rotR(h->right);
-                }
-                h = rotL(h);
-            } else if (bf(h) > 1) {
-                if (bf(h->left) < 0) {
-                    h->left = rotL(h->left);
-                }
-                h = rotR(h);
+        int max(int a, int b) { return (a < b) ? b:a; }
+        void left_rotate(node *x) {
+            node *y = x->right;
+            if (y) {
+                x->right = y->left;
+                if (y->left) y->left->parent = x;
+                y->parent = x->parent;
             }
-            return h;
+            if (!x->parent) root = y;
+            else if (x == x->parent->left) x->parent->left = y;
+            else x->parent->right = y;
+            if (y) y->left = x;
+            x->parent = y;
+            x->height = 1 + max(height(x->left), height(x->right));
+            y->height = 1 + max(height(y->left), height(y->right));
         }
-        link put(link h, K key, V val) {
-            if (h == nullptr) 
-                return make_shared<node>(key, val);
-            if (key < h->key) h->left = put(h->left, key, val);
-            else h->right = put(h->right, key, val);
-            h->height = heightAdjust(h);
-            return balance(h);
-        }
-        link get(link h, K key) {
-            if (h == nullptr || key == h->key)
-                return h;
-            if (key < h->key) return get(h->left, key);
-            else return get(h->right, key);
-        }
-        link getMin(link h) {
-            if (h == nullptr || h->left == nullptr)
-                return h;
-            return getMin(h->left);
-        }
-        link removeMin(link h) {
-            if (h->left == nullptr)
-                return h->right;
-            h->left = removeMin(h->left);
-            h->height = heightAdjust(h);
-            return h;
-        }
-        link remove(link h, K key) {
-            if (h == nullptr)
-                return h;
-            if (key < h->key) {
-                h->left = remove(h->left, key);
-            } else if (key > h->key) {
-                h->right = remove(h->right, key);
-            } else {
-                if (h->left == nullptr) {
-                    return h->right;
-                } else if (h->right == nullptr) {
-                    return h->left;
-                } else {
-                    link y = h;
-                    h = getMin(y->right);
-                    h->right = removeMin(y->right);
-                    h->left = y->left;
-                }
+  
+        void right_rotate(node *x) {
+            node *y = x->left;
+            if (y) {
+                x->left = y->right;
+                if (y->right) y->right->parent = x;
+                y->parent = x->parent;
             }
-            h->height = heightAdjust(h);
-            return balance(h);
+            if (!x->parent) root = y;
+            else if (x == x->parent->left) x->parent->left = y;
+            else x->parent->right = y;
+            if (y) y->right = x;
+            x->parent = y;
+            x->height = 1 + max(height(x->left), height(x->right));
+            y->height = 1 + max(height(y->left), height(y->right));
+        } 
+        int balanceFactor(node* h) {
+            return height(h->left) - height(h->right);
         }
-        void preorder(link h) {
+        void balance(node* x) {
+            while (x && x->parent) {
+                node *y = x->parent;
+                y->height = 1 + max(height(y->left), height(y->right));
+                if (balanceFactor(y) < -1) {
+                    if (balanceFactor(y->right) > 0) {
+                        right_rotate(y->right);
+                    }
+                    left_rotate(y);
+                } else if (balanceFactor(y) > 1) {
+                    if (balanceFactor(y->left) < 0) {
+                        left_rotate(y->left);
+                    }
+                    right_rotate(y);
+                }
+                x = x->parent;
+            }
+        }
+        void visit(node* h) {
             if (h != nullptr) {
                 cout<<h->key<<" ";
-                preorder(h->left);
-                preorder(h->right);
+                visit(h->left);
+                visit(h->right);
+            }
+        } 
+        void transplant(node *u, node* v) {
+            if (u->parent == nullptr) {
+                root = v;
+            } else if (u == u->parent->left) {
+                u->parent->left = v;
+            } else {
+                u->parent->right = v;
+            }
+            if (v != nullptr) {
+                v->parent = u->parent;
             }
         }
+        void eraseR(node* h) {
+            node* t = h;
+            if (h->left == nullptr)
+                transplant(h, h->right);
+            else if (h->right == nullptr) {
+                transplant(h, h->left);
+            } else {
+                node* y = min(h->right);
+                if (y->parent != h) {
+                    transplant(y, y->right);
+                    y->right = h->right;
+                    y->right->parent = y;
+                }
+                transplant(h, y);
+                y->left = h->left;
+                y->left->parent = y;
+            }
+            delete t;
+        }
+        node* min(node* h) {
+            node* x = h;
+            while (x->left != nullptr) x = x->left;
+            return x;
+        }
     public:
-        Dict() {
-            head = nullptr;
+        AVLTree() {
+            root = nullptr;
+            N = 0;
         }
-        void put(K key, V value) {
-            head = put(head, key, value);
-            count++;
+        void insert(T key, T2 value) {
+            node* x = root;
+            node* p = x;
+            while (x) {
+                p = x;
+                x = (key < x->key) ? x->left:x->right;
+            }
+            x = new node(key, value);
+            if (!p) root = x;
+            else if (key < p->key) p->left = x;
+            else p->right = x;
+            x->parent = p;
+            balance(x);
+            N++;
         }
-        V get(K key) {
-            link x = get(head, key);
-            if (x != nullptr)
-                return x->value;
-            return -1;
+        void erase(T key) {
+            node *x = root;
+            bool found = false;
+            while (x != nullptr) {
+                if (x->key == key) {
+                    found = true;
+                    break;
+                }
+                x = (key < x->key) ? x->left:x->right;
+            }
+            if (found) {
+                eraseR(x);
+                balance(x);
+                N--;
+            }
         }
-        void remove(K key) {
-            head = remove(head, key);
-            count--;
-        }
-        int size() const { return count; }
-        bool empty() const { return head == nullptr; }
         void show() {
-            preorder(head);
+            visit(root);
             cout<<endl;
+        }
+        bool contains(T key) {
+            node* x = root;
+            while (x != nullptr) {
+                if (key == x->key)
+                    return true;
+                x = (key < x->key) ? x->left:x->right;
+            }
+            return false;
+        }
+        T2 get(T key) {
+            node *x = root;
+            while (x != nullptr) {
+                if (key == x->key)
+                    return x->value;
+                x = (key < x->key) ? x->left:x->right;
+            }
+            return T2();
         }
 };
 
