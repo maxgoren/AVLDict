@@ -1,6 +1,6 @@
 /*
     AVLDict.hpp 
-    Copyright (c) 2022 Max Goren
+    Copyright (c) 2023 Max Goren
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -26,17 +26,57 @@ using namespace std;
 template <class T, class T2>
 class AVLTree {
     private:
+        typedef pair<T,T2> entry;
         struct node {
-            T key;
-            T2 value;
+            entry data;
             int height;
             node* left;
             node* right;
             node* parent;
-            node(T k, T2 v) {
-                key = k; value = v; height = 0; left = right = parent = nullptr;
+            node(entry p) {
+                data = p; height = 0; left = right = parent = nullptr;
             }
         };
+    public:
+        class AVLIterator {
+            private:
+                node* curr;
+            public:
+                AVLIterator(node* c) {
+                    curr = c;
+                }
+                entry& operator*() {
+                    return curr->data;
+                }
+                AVLIterator& operator++() noexcept {
+                   node* p;
+                    if (curr->right != nullptr) {
+                        curr = curr->right;
+                        while (curr->left != nullptr) curr = curr->left;
+                    } else {
+                        p = curr->parent;
+                        while (p != nullptr && curr == p->right) {
+                            curr = p;
+                            p = p->parent;
+                        }
+                        curr = p;
+                    }
+                   return *this;
+                }
+                AVLIterator operator++(int) noexcept {
+                    AVLIterator it = *this;
+                    ++*this;
+                    return it;
+                }
+                bool operator==(const AVLIterator& o) const {
+                    return this->curr == o.curr;
+                }
+                bool operator!=(const AVLIterator& o) const {
+                    return !(*this==o);
+
+                }
+        };
+    private:
         node* root;
         int N;
         int height(node* h) {
@@ -95,13 +135,6 @@ class AVLTree {
                 x = x->parent;
             }
         }
-        void visit(node* h) {
-            if (h != nullptr) {
-                cout<<h->key<<" ";
-                visit(h->left);
-                visit(h->right);
-            }
-        } 
         void transplant(node *u, node* v) {
             if (u->parent == nullptr) {
                 root = v;
@@ -138,6 +171,13 @@ class AVLTree {
             while (x->left != nullptr) x = x->left;
             return x;
         }
+        void inorder(node* h, T keys[], int& n) {
+            if (h == nullptr) return;
+            inorder(h->left, keys, n);
+            keys[n++] = h->data.first;
+            cout<<h->data.first<<" ";
+            inorder(h->right, keys, n);
+        }
     public:
         AVLTree() {
             root = nullptr;
@@ -148,11 +188,11 @@ class AVLTree {
             node* p = x;
             while (x) {
                 p = x;
-                x = (key < x->key) ? x->left:x->right;
+                x = (key < x->data.first) ? x->left:x->right;
             }
-            x = new node(key, value);
+            x = new node(make_pair(key, value));
             if (!p) root = x;
-            else if (key < p->key) p->left = x;
+            else if (key < p->data.first) p->left = x;
             else p->right = x;
             x->parent = p;
             balance(x);
@@ -162,11 +202,11 @@ class AVLTree {
             node *x = root;
             bool found = false;
             while (x != nullptr) {
-                if (x->key == key) {
+                if (x->data.first == key) {
                     found = true;
                     break;
                 }
-                x = (key < x->key) ? x->left:x->right;
+                x = (key < x->data.first) ? x->left:x->right;
             }
             if (found) {
                 eraseR(x);
@@ -174,25 +214,21 @@ class AVLTree {
                 N--;
             }
         }
-        void show() {
-            visit(root);
-            cout<<endl;
-        }
         bool contains(T key) {
             node* x = root;
             while (x != nullptr) {
-                if (key == x->key)
+                if (key == x->data.first)
                     return true;
-                x = (key < x->key) ? x->left:x->right;
+                x = (key < x->data.first) ? x->left:x->right;
             }
             return false;
         }
         T2 get(T key) {
             node *x = root;
             while (x != nullptr) {
-                if (key == x->key)
-                    return x->value;
-                x = (key < x->key) ? x->left:x->right;
+                if (key == x->data.first)
+                    return x->data.second;
+                x = (key < x->data.first) ? x->left:x->right;
             }
             return T2();
         }
@@ -201,6 +237,19 @@ class AVLTree {
         }
         int size() const {
             return N;
+        }
+        AVLIterator begin() noexcept {
+            return AVLIterator(min(root));
+        }
+        AVLIterator end() {
+            return AVLIterator(nullptr);
+        }
+        T* sort() {
+            T *keys = new T[N];
+            int id = 0;
+            inorder(root, keys, id);
+            cout<<endl;
+            return keys;
         }
 };
 
